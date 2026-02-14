@@ -15,7 +15,6 @@ RunService:BindToRenderStep("CamScript", Enum.RenderPriority.Camera.Value + 1, f
 		if not character then return end
 		
 		local distance = (camera.CFrame.Position - head.Position).Magnitude
-		print(distance)
 
 		-- [if first person]
 		if distance < 1.5 then
