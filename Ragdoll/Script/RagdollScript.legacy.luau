@@ -161,11 +161,30 @@ function Ragdoll:EnableRagdoll(enable: boolean)
 		self.hum.AutoRotate = false
 		self.hum.PlatformStand = true
 	else
+		-- anchored the rootPart for a moment so it doesnt launch itself to the air
+		self.hrp.Anchored = true
+
+		-- set velocity to minimize the chance to launch itself
+		self.hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    	self.hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
 		self:EnableCollision(false)
 		self:EnableDefaultMotor6D(true)
+
+		-- set velocity to minimize the chance to launch itself
+		self.hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    	self.hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+
 		self.hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 		self.hum.AutoRotate = true
 		self.hum.PlatformStand = false
+
+		-- set velocity to minimize the chance to launch itself
+		self.hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    	self.hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		self.hrp.Anchored = false
+
+		-- mb for spamming the velocity lol, what can i do afterall
 	end
 end
 
