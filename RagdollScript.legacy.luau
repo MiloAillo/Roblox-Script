@@ -26,6 +26,8 @@ end
 function Ragdoll:SetupChar()
 	self.hum.BreakJointsOnDeath = false
 	self.hum.RequiresNeck = false
+
+	self.char:SetAttribute("IsRagdoll", false)
 end
 
 function Ragdoll:SetGroupCollision()
@@ -95,31 +97,31 @@ function Ragdoll:SetBodyAttachments()
 		if not object:IsA("BasePart") or object.Name == "HumanoidRootPart" then continue end
 
 		if object.Name == "Head" then
-			self.attachments["R_HeadTorsoAttachment"] = Ragdoll:MakeAttachment("R_HeadTorsoAttachment",  CFrame.new(0, -0.5, 0), object)
+			self.attachments["R_HeadTorsoAttachment"] = self:MakeAttachment("R_HeadTorsoAttachment",  CFrame.new(0, -0.5, 0), object)
 		end
 
 		if object.Name == "Left Arm" then
-			self.attachments["R_LeftArmTorsoAttachment"] = Ragdoll:MakeAttachment("R_LeftArmTorsoAttachment", CFrame.new(0.4, 0.75, 0), object)
+			self.attachments["R_LeftArmTorsoAttachment"] = self:MakeAttachment("R_LeftArmTorsoAttachment", CFrame.new(0.4, 0.75, 0), object)
 		end
 
 		if object.Name == "Right Arm" then
-			self.attachments["R_RightArmTorsoAttachment"] = Ragdoll:MakeAttachment("R_RightArmTorsoAttachment", CFrame.new(-0.4, 0.75, 0), object)
+			self.attachments["R_RightArmTorsoAttachment"] = self:MakeAttachment("R_RightArmTorsoAttachment", CFrame.new(-0.4, 0.75, 0), object)
 		end
 
 		if object.Name == "Left Leg" then
-			self.attachments["R_LeftLegTorsoAttachment"] = Ragdoll:MakeAttachment("R_LeftLegTorsoAttachment", CFrame.new(0, 1, 0), object)
+			self.attachments["R_LeftLegTorsoAttachment"] = self:MakeAttachment("R_LeftLegTorsoAttachment", CFrame.new(0, 1, 0), object)
 		end
 
 		if object.Name == "Right Leg" then
-			self.attachments["R_RightLegTorsoAttachment"] = Ragdoll:MakeAttachment("R_RightLegTorsoAttachment", CFrame.new(0, 1, 0), object)
+			self.attachments["R_RightLegTorsoAttachment"] = self:MakeAttachment("R_RightLegTorsoAttachment", CFrame.new(0, 1, 0), object)
 		end
 
 		if object.Name == "Torso" then
-			self.attachments["R_TorsoHeadAttachment"] = Ragdoll:MakeAttachment("R_TorsoHeadAttachment", CFrame.new(0, 1, 0), object)
-			self.attachments["R_TorsoLeftArmAttachment"] = Ragdoll:MakeAttachment("R_TorsoLeftArmAttachment", CFrame.new(-1, 0.75, 0), object)
-			self.attachments["R_TorsoRightArmAttachment"] = Ragdoll:MakeAttachment("R_TorsoRightArmAttachment", CFrame.new(1, 0.75, 0), object)
-			self.attachments["R_TorsoLeftLegAttachment"] = Ragdoll:MakeAttachment("R_TorsoLeftLegAttachment", CFrame.new(-0.5, -1, 0), object)
-			self.attachments["R_TorsoRightLegAttachment"] = Ragdoll:MakeAttachment("R_TorsoRightLegAttachment", CFrame.new(0.5, -1, 0), object)
+			self.attachments["R_TorsoHeadAttachment"] = self:MakeAttachment("R_TorsoHeadAttachment", CFrame.new(0, 1, 0), object)
+			self.attachments["R_TorsoLeftArmAttachment"] = self:MakeAttachment("R_TorsoLeftArmAttachment", CFrame.new(-1, 0.75, 0), object)
+			self.attachments["R_TorsoRightArmAttachment"] = self:MakeAttachment("R_TorsoRightArmAttachment", CFrame.new(1, 0.75, 0), object)
+			self.attachments["R_TorsoLeftLegAttachment"] = self:MakeAttachment("R_TorsoLeftLegAttachment", CFrame.new(-0.5, -1, 0), object)
+			self.attachments["R_TorsoRightLegAttachment"] = self:MakeAttachment("R_TorsoRightLegAttachment", CFrame.new(0.5, -1, 0), object)
 		end
 	end
 end
@@ -134,12 +136,42 @@ function Ragdoll:SetBodyJoints()
 	self:MakeBallSocket("R_TorsoRightLegBallSocket", self.attachments["R_TorsoRightLegAttachment"], self.attachments["R_RightLegTorsoAttachment"], torso)
 end
 
+function Ragdoll:EnableRagdoll(enable: boolean)
+	if enable then 
+		self:EnableDefaultMotor6D(false)
+		self.hum.PlatformStand = true
+	else
+		self:EnableDefaultMotor6D(true)
+		self.hum.PlatformStand = false
+	end
+end
+
+function Ragdoll:PostInit()
+	self.char.AttributeChanged:Connect(function(attribute)
+		if(attribute == "IsRagdoll") then
+			local isRagdoll = self.char:GetAttribute("IsRagdoll")
+			
+			if isRagdoll then
+				self:EnableRagdoll(true)
+			else
+				self:EnableRagdoll(false)
+			end
+		end
+	end)
+end
+
 -- ====== Instantiation Zone ===========
 
 local ragdoll = Ragdoll.new(script.Parent)
 
+-- run the first time character spawn
 ragdoll:SetupChar()
-ragdoll:EnableDefaultMotor6D(false)
+ragdoll:EnableRagdoll(true) -- yeah, this is needed to disasble the default motor6D so the engine doesnt get confused
 ragdoll:SetBodyAttachments()
 ragdoll:SetBodyJoints()
 ragdoll:SetBodyCollision()
+
+-- switch back to false
+ragdoll:EnableRagdoll(false)
+
+ragdoll:PostInit()
