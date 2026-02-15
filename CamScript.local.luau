@@ -1,9 +1,7 @@
 -- [Services]
 local RunService: RunService = game:GetService("RunService")
-local Players: Players = game:GetService("Players")
 
 -- [Script Holder Variables]
-local player = Players.LocalPlayer
 local character = script.Parent
 
 -- [Part Variables]

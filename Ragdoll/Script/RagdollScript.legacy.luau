@@ -1,5 +1,7 @@
 -- ========= Collison Group ==============
 local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 pcall(function()
 	PhysicsService:RegisterCollisionGroup("Body")
@@ -16,9 +18,14 @@ function Ragdoll.new(char)
 	local self = setmetatable({}, Ragdoll)
 
 	self.char = char
+	self.plr = game:GetService("Players"):GetPlayerFromCharacter(char)
 	self.hum = char:WaitForChild("Humanoid")
 	self.hrp = char:WaitForChild("HumanoidRootPart")
+	self.ragdollEvent = ReplicatedStorage:FindFirstChild("IsRagdollEvent")
+	self.BallSockets = {}
 	self.attachments = {}
+	self.collParts = {}
+	self.isReservedToLoad = false
 
 	return self
 end
@@ -69,6 +76,8 @@ function Ragdoll:MakeBallSocket(name, obj1, obj2, parent)
 	ballSocket.Name = name
 	ballSocket.Parent = parent
 
+	self.BallSockets[ballSocket.Name] = ballSocket
+
 	return ballSocket
 end
 
@@ -80,15 +89,16 @@ function Ragdoll:SetBodyCollision()
 		local collPart: BasePart = object:Clone()
 		collPart.Size = Vector3.new(object.Size.X * smallingValue, object.Size.Y * smallingValue, object.Size.Z * smallingValue)
 		collPart.Transparency = 1
-		collPart.Massless = false
-		collPart.CanCollide = true
-		collPart.CanTouch = true
+		collPart.Massless = true
+		collPart.CanCollide = false
 		collPart.Parent = object
 
 		object.CollisionGroup = "Body"
 		collPart.CollisionGroup = "CollisionPart"
 
 		self:MakeWeld("R_"..object.Name.."CollisionWeld", object, collPart, object)
+
+		self.collParts[collPart.Name] = collPart
 	end
 end
 
@@ -136,12 +146,25 @@ function Ragdoll:SetBodyJoints()
 	self:MakeBallSocket("R_TorsoRightLegBallSocket", self.attachments["R_TorsoRightLegAttachment"], self.attachments["R_RightLegTorsoAttachment"], torso)
 end
 
+function Ragdoll:EnableCollision(state: boolean)
+	for _, collPart: BasePart in pairs(self.collParts) do
+		collPart.CanCollide = state
+		collPart.CanTouch = state
+	end
+end
+
 function Ragdoll:EnableRagdoll(enable: boolean)
 	if enable then 
+		self:EnableCollision(true)
 		self:EnableDefaultMotor6D(false)
+		self.hum:ChangeState(Enum.HumanoidStateType.Physics)
+		self.hum.AutoRotate = false
 		self.hum.PlatformStand = true
 	else
+		self:EnableCollision(false)
 		self:EnableDefaultMotor6D(true)
+		self.hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		self.hum.AutoRotate = true
 		self.hum.PlatformStand = false
 	end
 end
@@ -158,20 +181,45 @@ function Ragdoll:PostInit()
 			end
 		end
 	end)
+
+	self.ragdollEvent.OnServerEvent:Connect(function(player)
+		if self.plr ~= player then return end
+		
+		local isRagdoll = self.char:GetAttribute("IsRagdoll")
+		self.char:SetAttribute("IsRagdoll", not isRagdoll)
+	end)
+
+	-- effective to ragdoll when character die, NOT EFFECTIVE when char already ragdolled because roblox engine succ.
+	-- server Humanoid Health state is static and will not update until loosened.
+	-- bypass using client
+	self.hum.Died:Connect(function()
+		self:EnableRagdoll(true)
+
+		task.wait(game:GetService("Players").RespawnTime)
+
+		if self.plr and not self.isReservedToLoad then
+			self.plr:LoadCharacter()
+			self.isReservedToLoad = true
+		end
+	end)
 end
 
--- ====== Instantiation Zone ===========
+-- ====== Player Spawn Instantiation ===========
 
-local ragdoll = Ragdoll.new(script.Parent)
+Players.PlayerAdded:Connect(function(player) 
+	player.CharacterAdded:Connect(function(char) 
+		local ragdoll = Ragdoll.new(char)
 
--- run the first time character spawn
-ragdoll:SetupChar()
-ragdoll:EnableRagdoll(true) -- yeah, this is needed to disasble the default motor6D so the engine doesnt get confused
-ragdoll:SetBodyAttachments()
-ragdoll:SetBodyJoints()
-ragdoll:SetBodyCollision()
+		-- run the first time character spawn
+		ragdoll:SetupChar()
+		ragdoll:EnableRagdoll(true) -- yeah, this is needed to disasble the default motor6D so the engine doesnt get confused
+		ragdoll:SetBodyAttachments()
+		ragdoll:SetBodyJoints()
+		ragdoll:SetBodyCollision()
 
--- switch back to false
-ragdoll:EnableRagdoll(false)
+		-- switch back to false
+		ragdoll:EnableRagdoll(false)
 
-ragdoll:PostInit()
+		ragdoll:PostInit()
+	end)
+end)
